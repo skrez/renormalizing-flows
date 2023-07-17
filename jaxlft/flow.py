@@ -57,7 +57,12 @@ def transform_flow(
             x, logprob = forward(x, logprob=logr, **kwargs)
             return x, logprob
 
-        #sample_to?
+        def sample_to(batch_size, **kwargs):
+            x, logr = sample_log_prob(hk.next_rng_key(), batch_size)
+            #todo: need to test that in fact t_final is passed along
+            x, logprob = forward_to(x, logprob=logr, **kwargs) 
+            return x, logprob
+
 
         def init(batch_size=1, **kwargs):
             x, _ = sample(batch_size, **kwargs)
@@ -65,9 +70,9 @@ def transform_flow(
                 x, _ = reverse(x, **kwargs)
             return x
 
-        return init, (sample, forward, reverse, forward_to)
+        return init, (sample, forward, reverse, forward_to, sample_to)
 
-    init, (sample, forward, reverse, forward_to) = hk.multi_transform(generator)
+    init, (sample, forward, reverse, forward_to, sample_to) = hk.multi_transform(generator)
     forward, reverse, forward_to= map(_without_apply_rng, (forward, reverse, forward_to))
 
     if apply_jit:
@@ -80,10 +85,13 @@ def transform_flow(
         sample = jax.jit(
             sample, static_argnums=(2,),
             static_argnames=('batch_size',))
+        sample_to = jax.jit(
+            sample_to, static_argnums=(2,),
+            static_argnames=('batch_size',))
 
     flow_type = namedtuple('Flow',
-                           ['init', 'prior', 'sample', 'forward', 'reverse', 'forward_to'])
-    return flow_type(init, sample_log_prob, sample, forward, reverse, forward_to)
+                           ['init', 'prior', 'sample', 'forward', 'reverse', 'forward_to','sample_to'])
+    return flow_type(init, sample_log_prob, sample, forward, reverse, forward_to, sample_to)
 
 
 class AbstractFlow:
