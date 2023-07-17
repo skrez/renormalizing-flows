@@ -206,6 +206,9 @@ class NODEFlowBase(AbstractFlow):
             else:
                 phis, logprob = odeint_rk4(
                     field, start, t_final, step_size=t_final/self.int_steps)
+            return phis, logprob
+
+
 
         def reverse(phis, logprob=None, **kwargs):
             """Flow field configurations ``phis`` backward."""
