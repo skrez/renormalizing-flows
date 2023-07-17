@@ -48,14 +48,16 @@ def transform_flow(
     def generator():
         flow = flow_generator()
         if isinstance(flow, tuple):
-            forward, reverse = flow
+            forward, reverse, forward_to = flow
         else:
-            forward, reverse = flow.forward, flow.reverse
+            forward, reverse, forward_to = flow.forward, flow.reverse, flow.forward_to
 
         def sample(batch_size, **kwargs):
             x, logr = sample_log_prob(hk.next_rng_key(), batch_size)
             x, logprob = forward(x, logprob=logr, **kwargs)
             return x, logprob
+
+        #sample_to?
 
         def init(batch_size=1, **kwargs):
             x, _ = sample(batch_size, **kwargs)
@@ -63,14 +65,15 @@ def transform_flow(
                 x, _ = reverse(x, **kwargs)
             return x
 
-        return init, (sample, forward, reverse)
+        return init, (sample, forward, reverse, forward_to)
 
-    init, (sample, forward, reverse) = hk.multi_transform(generator)
-    forward, reverse = map(_without_apply_rng, (forward, reverse))
+    init, (sample, forward, reverse, forward_to) = hk.multi_transform(generator)
+    forward, reverse, forward_to= map(_without_apply_rng, (forward, reverse, forward_to))
 
     if apply_jit:
         forward = jax.jit(forward)
         reverse = jax.jit(reverse)
+        forward_to = jax.jit(forward_to)
         sample_log_prob = jax.jit(
             sample_log_prob, static_argnums=(1,),
             static_argnames=('batch_size',))
@@ -79,8 +82,8 @@ def transform_flow(
             static_argnames=('batch_size',))
 
     flow_type = namedtuple('Flow',
-                           ['init', 'prior', 'sample', 'forward', 'reverse'])
-    return flow_type(init, sample_log_prob, sample, forward, reverse)
+                           ['init', 'prior', 'sample', 'forward', 'reverse', 'forward_to'])
+    return flow_type(init, sample_log_prob, sample, forward, reverse, forward_to)
 
 
 class AbstractFlow:
@@ -106,6 +109,7 @@ class AbstractFlow:
             - forward: ``(params, samples, logprob=None, **kwargs) -> (samples, log prob)``
             - reverse: ``(params, samples, logprob=None, **kwargs) -> (samples, log prob)``
             - sample: ``(params, key, batch_size, **kwargs) -> (samples, log prob)``
+            TODO: FORWARD-TO NEEDS TO BE ADDED
 
         Args:
             prior: Prior distribution. Default is ``IndependentUnitNormal``.

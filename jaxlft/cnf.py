@@ -190,6 +190,23 @@ class NODEFlowBase(AbstractFlow):
                     field, start, 1.0, step_size=1/self.int_steps)
             return phis, logprob
 
+        def forward_to(phis, logprob=None, t_final=1.0, **kwargs):
+            """Flow field configurations ``phis`` forward to step t_final"""
+            field = partial(self.vector_field, **kwargs)
+            if logprob is None:
+                logprob = jnp.zeros(len(phis))
+            start = (phis, logprob)
+
+            if hk.running_init():
+                # must not call odeint within hk.transform
+                return field(start, 0.)
+            elif self.int_steps is None:
+                out = odeint(field, start, jnp.array([0., t_final]))
+                (_, phis), (_, logprob) = out
+            else:
+                phis, logprob = odeint_rk4(
+                    field, start, t_final, step_size=t_final/self.int_steps)
+
         def reverse(phis, logprob=None, **kwargs):
             """Flow field configurations ``phis`` backward."""
             field = partial(self.vector_field_reverse, **kwargs)
@@ -207,7 +224,7 @@ class NODEFlowBase(AbstractFlow):
                     field, start, 1.0, step_size=1 / self.int_steps)
             return phis, logprob
 
-        return forward, reverse
+        return forward, reverse, forward_to
 
 
 class Phi4CNF(NODEFlowBase):
