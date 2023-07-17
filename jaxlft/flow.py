@@ -57,10 +57,10 @@ def transform_flow(
             x, logprob = forward(x, logprob=logr, **kwargs)
             return x, logprob
 
-        def sample_to(batch_size, **kwargs):
+        def sample_to(batch_size, t_final=1.0, **kwargs):
             x, logr = sample_log_prob(hk.next_rng_key(), batch_size)
             #todo: need to test that in fact t_final is passed along
-            x, logprob = forward_to(x, logprob=logr, **kwargs) 
+            x, logprob = forward_to(x, logprob=logr, t_final=t_final, **kwargs) 
             return x, logprob
 
 
