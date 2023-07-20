@@ -314,11 +314,12 @@ class CarossoPrior:
         Args:
             shape: Shape of base space.
         """
-        if (len(shape) != 2) or (shape[0] != shape[1]):
-          raise NotImplementedError("Shape for Carosso prior should be 2D and square!")
+        #if (len(shape) != 2) or (shape[0] != shape[1]):
+        #  raise NotImplementedError("Shape for Carosso prior should be 2D and square!")
         #self.shape = shape
-        self.N = self.shape[0]
+        #self.N = self.shape[0]
         #self.t_max = t_max
+        self.N=N
         self.L = L
         self.speedup=speedup
         self.Omega = (1.0/L)**2
