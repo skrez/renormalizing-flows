@@ -358,7 +358,7 @@ class CarossoPrior:
         phips = our_fft(phis) 
         norms = jax.lax.real(phips*jax.lax.conj(phips))
         rescaled_norms = -(hatpsquared/self.Omega) *  norms
-        uncorrected_sums = jnp.sum(rescaled, axis=(-1,-2))/2
+        uncorrected_sums = jnp.sum(rescaled_norms, axis=(-1,-2))/2
         return uncorrected_sums + (rescaled_norms[:, 0, 0]/2) + (rescaled_norms[:, int(self.N)/2, int(self.N)/2]/2)
 
 
