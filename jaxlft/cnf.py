@@ -228,8 +228,6 @@ class NODEFlowBase(AbstractFlow):
                     field, start, 1.0, step_size=1 / self.int_steps)
             return phis, logprob
 
-        return forward, reverse, forward_to
-
         def reverse_from(phis, logprob=None, t_final=0.0, **kwargs):
             """Flow field configurations ``phis`` forward to step t_final"""
             field = partial(self.vector_field_reverse, **kwargs)
@@ -248,6 +246,10 @@ class NODEFlowBase(AbstractFlow):
                     field, start, t_final, step_size=t_final/self.int_steps)
             return phis, logprob
 
+
+        return forward, reverse, forward_to, reverse_from
+
+        
 
 class Phi4CNF(NODEFlowBase):
     def __init__(
