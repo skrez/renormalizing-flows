@@ -342,7 +342,6 @@ class CarossoPrior:
         return sample_from_prior(seed, sample_shape, self.N, speedup=self.speedup, L=self.L)
 
         
-    @jax.jit
     def log_prob(self, phis: jnp.ndarray) -> jnp.ndarray:
         """Evaluate the log likelihood.
 
