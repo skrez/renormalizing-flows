@@ -48,9 +48,9 @@ def transform_flow(
     def generator():
         flow = flow_generator()
         if isinstance(flow, tuple):
-            forward, reverse, forward_to = flow
+            forward, reverse, forward_to, reverse_from = flow
         else:
-            forward, reverse, forward_to = flow.forward, flow.reverse, flow.forward_to
+            forward, reverse, forward_to, reverse_from = flow.forward, flow.reverse, flow.forward_to, flow.reverse_from
 
         def sample(batch_size, **kwargs):
             x, logr = sample_log_prob(hk.next_rng_key(), batch_size)
@@ -70,15 +70,16 @@ def transform_flow(
                 x, _ = reverse(x, **kwargs)
             return x
 
-        return init, (sample, forward, reverse, forward_to, sample_to)
+        return init, (sample, forward, reverse, forward_to, sample_to,reverse_from)
 
-    init, (sample, forward, reverse, forward_to, sample_to) = hk.multi_transform(generator)
-    forward, reverse, forward_to= map(_without_apply_rng, (forward, reverse, forward_to))
+    init, (sample, forward, reverse, forward_to, sample_to, reverse_from) = hk.multi_transform(generator)
+    forward, reverse, forward_to, reverse_from= map(_without_apply_rng, (forward, reverse, forward_to, reverse_from))
 
     if apply_jit:
         forward = jax.jit(forward)
         reverse = jax.jit(reverse)
         forward_to = jax.jit(forward_to)
+        reverse_from = jax.jit(reverse_from)
         sample_log_prob = jax.jit(
             sample_log_prob, static_argnums=(1,),
             static_argnames=('batch_size',))
@@ -90,8 +91,8 @@ def transform_flow(
             static_argnames=('batch_size',))
 
     flow_type = namedtuple('Flow',
-                           ['init', 'prior', 'sample', 'forward', 'reverse', 'forward_to','sample_to'])
-    return flow_type(init, sample_log_prob, sample, forward, reverse, forward_to, sample_to)
+                           ['init', 'prior', 'sample', 'forward', 'reverse', 'forward_to','sample_to', 'reverse_from'])
+    return flow_type(init, sample_log_prob, sample, forward, reverse, forward_to, sample_to, reverse_from)
 
 
 class AbstractFlow:

@@ -208,7 +208,8 @@ class NODEFlowBase(AbstractFlow):
                     field, start, t_final, step_size=t_final/self.int_steps)
             return phis, logprob
 
-
+        #need to add reverse-from
+        #to compute the loss one needs to take an accept step 
 
         def reverse(phis, logprob=None, **kwargs):
             """Flow field configurations ``phis`` backward."""
@@ -228,6 +229,24 @@ class NODEFlowBase(AbstractFlow):
             return phis, logprob
 
         return forward, reverse, forward_to
+
+        def reverse_from(phis, logprob=None, t_final=0.0, **kwargs):
+            """Flow field configurations ``phis`` forward to step t_final"""
+            field = partial(self.vector_field_reverse, **kwargs)
+            if logprob is None:
+                logprob = jnp.zeros(len(phis))
+            start = (phis, logprob)
+
+            if hk.running_init():
+                # must not call odeint within hk.transform
+                return field(start, 0.)
+            elif self.int_steps is None:
+                out = odeint(field, start, jnp.array([1.0-t_final, 1.0]))
+                (_, phis), (_, logprob) = out
+            else:
+                phis, logprob = odeint_rk4(
+                    field, start, t_final, step_size=t_final/self.int_steps)
+            return phis, logprob
 
 
 class Phi4CNF(NODEFlowBase):
