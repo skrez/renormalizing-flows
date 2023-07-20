@@ -155,8 +155,11 @@ def reverse_dkl(logp: jnp.ndarray, logq: jnp.ndarray) -> jnp.ndarray:
 
     If the samples ``x`` are distributed according to ``p(x)``, this
     is the reverse KL divergence.
+    (Semon: the above seems wrong. The above should be from q(x).)
+    (Reverse kl is zero-forcing, and is what the existing normalizing flow literature uses.)
     If the samples were taken from p(x), the returned value is the negative
     forward KL divergence.
+    (forwards kl is zero-avoiding.)
 
     Args:
         logp: The log likelihood of p (up to a constant shift).
@@ -195,6 +198,168 @@ def moving_average(x: jnp.ndarray, window: int = 10):
         return jnp.mean(x, keepdims=True)
     else:
         return jnp.convolve(x, jnp.ones(window), 'valid') / window
+
+
+@jax.jit
+def our_fft(phis):
+  """our rfft conventions.
+  Here phi should be a square array of size (..., N, N).
+  N is assumed to be even.
+
+  The relation between the phi(n) in our paper is that phi(n) in our paper
+  corresponds to phi(m) here where n = m - (N/2+1, ..., N/2+1).
+  Thus as n ranges over vectors with entries in [-N/2+1, N/2],
+  m ranges over vectors with entries in [0, N].
+
+  This returns a matrix of size N, N
+  which should be thought of as \tilde{\phi}(p) in our paper
+  as p ranges over vectors with values in [0, N/2].
+  The relation is that our_fft(phi(m))[i,j] = \tilde{\phi}((i, j))
+  with the relation that \tilde{\phi}(p+e_i N)=\tilde{\phi}(p)."""
+  #This code is no longer needed.
+  #N = phi.shape[0]
+  #sumpi = jnp.broadcast_to(jnp.arange(0, N/2+1), (int(N/2+1), int(N/2+1)))
+  #sumpi =sumpi + sumpi.transpose()
+  #phases = jnp.exp(2*jnp.pi*(1j)*(-1)*(N/2+1)*sumpi/N)
+
+  #The insertion of ifftshift just happens to correctly deal with the shift from m to n.
+  #conj and choice of norm deals with signs in fourier trasform convention.
+  #Note that this assumes reality of phi, and when we take inverse
+  #we will have to take the real part to get a real signal due to floating
+  #point errors.
+  return jax.lax.conj(jnp.fft.fftn(jnp.fft.ifftshift(phis, axes=[-1,-2]), axes=[-1,-2], norm="forward"))
+
+@jax.jit
+def our_ifft(phips):
+  """our rfft conventions.
+  Here phip should be an array of size (..., N, N)
+  This inverts our_rfft.
+
+  This returns a matrix of size (..., N, N)."""
+  #N = (phip.shape[0]-1)*2
+  #sumpi = jnp.broadcast_to(jnp.arange(0, N/2+1), (int(N/2+1), int(N/2+1)))
+  #sumpi =sumpi + sumpi.transpose()
+  #phases = jnp.exp(2*jnp.pi*(1j)*(-1)*(N/2+1)*sumpi/N)
+  #phases deals with shift betwen n and m
+  #conj and choice of norm deals with signs in fourier trasform convention.
+  return jax.lax.real(jnp.fft.fftshift(jnp.fft.ifftn(jax.lax.conj(phips), axes=[-1,-2], norm="forward"), axes=[-1,-2]))
+
+@partial(jax.jit, static_argnums=[0,1])
+def hatpsquared2d(N, L):
+  #if n % 2 != 0:
+  #  raise NotImplementedError("Hat p squared implemented in 2D only for even-size lattices")
+  # We won't actually do this since we expect this to be jitted.
+  Ns = jnp.arange(0, N)
+  Ns = Ns.at[int(N/2+1):].set(Ns[int(N/2+1):]-N)
+  p0 = jnp.broadcast_to(Ns, (N, N))
+  sinsquareds0 = jnp.square((jnp.sin((jnp.pi * p0) /N)))
+  sinsquareds1 = jnp.transpose(sinsquareds0)
+  hatpsquared = ((2*N/L)**2)* (sinsquareds0 + sinsquareds1)
+  return hatpsquared #this at index (i, j) has the value of hatp^2((p0, p1)), where p0 = p0(i, j) = Ns(i) and and p1 = Ns(j).
+
+@partial(jax.jit, static_argnums=[1,2])
+def sample_complex_unit_normal(seed, N, sample_shape):
+  """Samples from the complex unit normal distribution
+  over DFTs of a real signal, i.e.
+  the distribution over phi(p) with phi(p) =conj(phi(-p))
+  (so phi(0) and phi(N/2) are forced to be real)
+  and such that otherwise real and imaginary parts are iid from N(0,1).
+
+  Assumes that N is even."""
+  samples = jax.lax.complex(jax.random.normal(seed, sample_shape+(N, N)), jax.random.normal(seed, sample_shape+(N, N)))
+  #goal: samples[i, j] = 1/sqrt(2)(samples[i, j] + conj(samples[-i, -j]))
+  #the 1/sqrt(2) factor is to make the final guys have sigma^2=1 rather than sigma^2=2. 
+  #this forces samples[0,0] and samples[N/2, N/2] to be real while all other values can be complex. 
+  samples_flipped = samples.copy()
+  samples_flipped = samples_flipped.at[..., 1:, :].set(samples_flipped[..., :0:-1, :])
+  samples_flipped = samples_flipped.at[..., :, 1:].set(samples_flipped[..., :, :0:-1])
+  return 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
+
+#will need to figure out correc seed/key semantics
+@jax.jit
+def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
+  N = phi0s.shape[-1]
+  Omega = 1/L**2 #check from paper
+  sample_shape = phi0s.shape[:-2]
+  samples = sample_complex_unit_normal(seed, N, sample_shape)
+  hatpsquared = hatpsquared2d(N, L)
+  hatpsquared=hatpsquared.at[0,0].set(10)
+  prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*speedup))/(2*hatpsquared))
+  print(prefactor)
+  real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*speedup)*phi0s)
+  means = jnp.mean(real_space_signal, axis=[-1, -2])
+  return real_space_signal-means[..., None, None]
+
+@partial(jax.jit, static_argnums=[1,2])
+def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0):
+  Omega = 1/L**2 #check from paper
+  samples = sample_complex_unit_normal(seed, N, sample_shape)
+  hatpsquared = hatpsquared2d(N, L)
+  hatpsquared = hatpsquared.at[0,0].set(1)
+  prefactor = jnp.sqrt(Omega/(2*hatpsquared))
+  sample = sample_complex_unit_normal(seed, N, sample_shape)*prefactor
+  real_space_signal = our_ifft(sample)
+  means = jnp.mean(real_space_signal, axis=[-1, -2])
+  return real_space_signal-means[..., None, None]
+
+
+
+class CarossoPrior:
+    def __init__(self, N, speedup=1.0, L=1.0): #may want to annotate t_max
+        """Element-wise independent unit normal distribution.
+
+        This class is meant to be compatible with the ones
+        in ``tensorflow_probability.distributions``.
+
+        Args:
+            shape: Shape of base space.
+        """
+        if (len(shape) != 2) or (shape[0] != shape[1]):
+          raise NotImplementedError("Shape for Carosso prior should be 2D and square!")
+        #self.shape = shape
+        self.N = self.shape[0]
+        #self.t_max = t_max
+        self.L = L
+        self.speedup=speedup
+        self.Omega = (1.0/L)**2
+        #self.covariance = self.Omega/2*(1/hatpsquared2d(self.N, self.L))
+
+    def sample(self,
+               sample_shape: tuple[int, ...] = (),
+               seed: chex.PRNGKey = None) -> jnp.ndarray:
+        """Generate a random independent unit normal sample.
+
+        Args:
+            sample_shape: Batch shape of the sample.
+            seed: Random seed.
+
+        Returns:
+            An array of shape ``(*sample_shape, *self.shape)``.
+        """
+        if isinstance(sample_shape, int):
+            sample_shape = (sample_shape,)
+        return sample_from_prior(seed, sample_shape, self.N, speedup=self.speedup, L=self.L)
+
+        
+
+    def log_prob(self, phis: jnp.ndarray) -> jnp.ndarray:
+        """Evaluate the log likelihood.
+
+        Args:
+            value: A sample from the present distribution.
+                The last dimensions must match the shape of the base space.
+
+        Returns:
+            The log likelihood of the samples.
+        """
+        #logp = jax.scipy.stats.norm.logpdf(value)
+        hatpsquared = hatpsquared2d(self.N, self.L)
+        phips = our_fft(phis) 
+        norms = jax.lax.real(phips*jax.lax.conj(phips))
+        rescaled_norms = -(hatpsquared/self.Omega) *  norms
+        uncorrected_sums = jnp.sum(rescaled, axis=(-1,-2))/2
+        return uncorrected_sums + (rescaled_norms[:, 0, 0]/2) + (rescaled_norms[:, int(self.N)/2, int(self.N)/2]/2)
+
 
 
 class IndependentUnitNormal:
