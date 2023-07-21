@@ -205,7 +205,7 @@ class NODEFlowBase(AbstractFlow):
                 (_, phis), (_, logprob) = out
             else:
                 phis, logprob = odeint_rk4(
-                    field, start, t_final, step_size=t_final/self.int_steps)
+                    field, start, t_final, step_size=1/self.int_steps)
             return phis, logprob
 
         #need to add reverse-from
@@ -243,7 +243,7 @@ class NODEFlowBase(AbstractFlow):
                 (_, phis), (_, logprob) = out
             else:
                 phis, logprob = odeint_rk4(
-                    field, start, 1.0, step_size=t_final/self.int_steps, start_time=1.0-t_final)
+                    field, start, 1.0, step_size=1/self.int_steps, start_time=1.0-t_final)
             return phis, logprob
 
 
