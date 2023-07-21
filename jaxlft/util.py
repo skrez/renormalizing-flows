@@ -275,20 +275,20 @@ def sample_complex_unit_normal(seed, N, sample_shape):
   samples_flipped = samples_flipped.at[..., :, 1:].set(samples_flipped[..., :, :0:-1])
   return 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
 
-#will need to figure out correc seed/key semantics
 @partial(jax.jit, static_argnums=[1,2], static_argnames=["speedup", "L"])
 def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
   N = phi0s.shape[-1]
   Omega = 1/L**2 #check from paper
   sample_shape = phi0s.shape[:-2]
+  phip0s= our_fft(phi0s)
   samples = sample_complex_unit_normal(seed, N, sample_shape)
   hatpsquared = hatpsquared2d(N, L)
   hatpsquared=hatpsquared.at[0,0].set(10)
   prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*speedup))/(2*hatpsquared))
   print(prefactor)
-  real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*speedup)*phi0s)
+  real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*speedup)*phip0s)
   means = jnp.mean(real_space_signal, axis=[-1, -2])
-  return real_space_signal-means[..., None, None]
+  return real_space_signal-means[..., None, None] + jnp.mean(phi0s, axis=[-1,-2])[:, None, None]
 
 @partial(jax.jit, static_argnums=[1,2], static_argnames=["speedup", "L"])
 def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0):
