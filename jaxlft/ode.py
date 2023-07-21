@@ -53,7 +53,7 @@ def odeint_rk4(fun, y0, end_time, *args, step_size, start_time=0):
     return _odeint_grid_wrapper(converted, step_size, y0, ts, *args, *consts)
 
 
-@partial(jax.jit, static_argnums=(0,1))
+@partial(jax.jit, static_argnums=(0,))
 def _odeint_grid_wrapper(fun, step_size, y0, ts, *args):
     y0, unravel = ravel_pytree(y0)
     fun = ravel_first_arg(fun, unravel)
