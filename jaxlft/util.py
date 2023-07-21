@@ -276,7 +276,7 @@ def sample_complex_unit_normal(seed, N, sample_shape):
   return 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
 
 #will need to figure out correc seed/key semantics
-@jax.jit
+@partial(jax.jit, static_argnums=[1,2], static_argnames=["speedup", "L"])
 def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
   N = phi0s.shape[-1]
   Omega = 1/L**2 #check from paper
@@ -290,7 +290,7 @@ def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
   means = jnp.mean(real_space_signal, axis=[-1, -2])
   return real_space_signal-means[..., None, None]
 
-@partial(jax.jit, static_argnums=[1,2])
+@partial(jax.jit, static_argnums=[1,2], static_argnames=["speedup", "L"])
 def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0):
   Omega = 1/L**2 #check from paper
   samples = sample_complex_unit_normal(seed, N, sample_shape)
@@ -341,7 +341,7 @@ class CarossoPrior:
             sample_shape = (sample_shape,)
         return sample_from_prior(seed, sample_shape, self.N, speedup=self.speedup, L=self.L)
 
-        
+    #possibly modify so that the core computation has been jitted.    
     def log_prob(self, phis: jnp.ndarray) -> jnp.ndarray:
         """Evaluate the log likelihood.
 
