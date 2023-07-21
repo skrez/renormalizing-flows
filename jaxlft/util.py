@@ -275,7 +275,7 @@ def sample_complex_unit_normal(seed, N, sample_shape):
   samples_flipped = samples_flipped.at[..., :, 1:].set(samples_flipped[..., :, :0:-1])
   return 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
 
-@partial(jax.jit, static_argnums=[1,2], static_argnames=["speedup", "L"])
+@partial(jax.jit, static_argnums=[2], static_argnames=["speedup", "L"])
 def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
   N = phi0s.shape[-1]
   Omega = 1/L**2 #check from paper
