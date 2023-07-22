@@ -257,7 +257,7 @@ def hatpsquared2d(N, L):
   hatpsquared = ((2*N/L)**2)* (sinsquareds0 + sinsquareds1)
   return hatpsquared #this at index (i, j) has the value of hatp^2((p0, p1)), where p0 = p0(i, j) = Ns(i) and and p1 = Ns(j).
 
-@partial(jax.jit, static_argnums=[1,2])
+#@partial(jax.jit, static_argnums=[1,2])
 def sample_complex_unit_normal(seed, N, sample_shape):
   """Samples from the complex unit normal distribution
   over DFTs of a real signal, i.e.
@@ -275,7 +275,7 @@ def sample_complex_unit_normal(seed, N, sample_shape):
   samples_flipped = samples_flipped.at[..., :, 1:].set(samples_flipped[..., :, :0:-1])
   return 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
 
-@partial(jax.jit, static_argnums=[2], static_argnames=["speedup", "L"])
+#@partial(jax.jit, static_argnums=, static_argnames=["speedup", "L"])
 def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
   N = phi0s.shape[-1]
   Omega = 1/L**2 #check from paper
@@ -290,7 +290,7 @@ def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
   means = jnp.mean(real_space_signal, axis=[-1, -2])
   return real_space_signal-means[..., None, None] + jnp.mean(phi0s, axis=[-1,-2])[:, None, None]
 
-@partial(jax.jit, static_argnums=[1,2], static_argnames=["speedup", "L"])
+#@partial(jax.jit, static_argnums=[1,2], static_argnames=["speedup", "L"])
 def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0):
   Omega = 1/L**2 #check from paper
   samples = sample_complex_unit_normal(seed, N, sample_shape)
