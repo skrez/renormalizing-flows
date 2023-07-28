@@ -70,7 +70,7 @@ def _rk4_odeint(fun, step_size, y0, ts, *args):
         k1 = func_(cur_y, cur_t)
         k2 = func_(cur_y + dt * k1 / 2, cur_t + dt / 2)
         k3 = func_(cur_y + dt * k2 / 2, cur_t + dt / 2)
-           k4 = func_(cur_y + dt * k3, cur_t + dt)
+        k4 = func_(cur_y + dt * k3, cur_t + dt)
         return (k1 + 2 * k2 + 2 * k3 + k4) * (dt / 6)
 
     def cond_fun(carry):
