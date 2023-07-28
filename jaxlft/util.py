@@ -285,7 +285,7 @@ def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
   hatpsquared = hatpsquared2d(N, L)
   hatpsquared=hatpsquared.at[0,0].set(10)
   prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*speedup))/(2*hatpsquared))
-  print(prefactor)
+  #print(prefactor)
   real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*speedup)*phip0s)
   means = jnp.mean(real_space_signal, axis=[-1, -2])
   return real_space_signal-means[..., None, None] + jnp.mean(phi0s, axis=[-1,-2])[:, None, None]
