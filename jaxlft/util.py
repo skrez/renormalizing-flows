@@ -357,7 +357,7 @@ class CarossoPrior:
         #logp = jax.scipy.stats.norm.logpdf(value)
         hatpsquared = hatpsquared2d(self.N, self.L)
         #this is to regularize the log probability
-        hatpsquared[0,0] = 0.001
+        hatpsquared  = hatpsquared.at[0,0].set(0.001)
         phips = our_fft(phis) 
         norms = jax.lax.real(phips*jax.lax.conj(phips))
         rescaled_norms = -(hatpsquared/self.Omega) *  norms
