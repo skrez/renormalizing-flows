@@ -326,7 +326,7 @@ class GeneralizedCarossoPrior:
         self.N=N
         self.Omega=Omega
         self.speedup=speedup
-        self.hatpsquared=hatpsquared
+        self.hatpsquared=jnp.array(hatpsquared)
 
     def sample_from_p_t(self, seed, phi0s, t):
         N=self.N
