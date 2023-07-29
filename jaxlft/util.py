@@ -335,8 +335,8 @@ class GeneralizedCarossoPrior:
         phip0s= our_fft(phi0s)
         samples = sample_complex_unit_normal(seed, N, sample_shape)
         hatpsquared = self.hatpsquared
-        prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*speedup))/(2*hatpsquared))
-        real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*speedup)*phip0s)
+        prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup))/(2*hatpsquared))
+        real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*self.speedup)*phip0s)
         return real_space_signal
 
     def sample(self,
