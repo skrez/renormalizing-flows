@@ -287,8 +287,8 @@ def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0, p0=1):
   prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*speedup))/(2*hatpsquared))
   #print(prefactor)
   real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*speedup)*phip0s)
-  means = jnp.mean(real_space_signal, axis=[-1, -2])
-  return real_space_signal-means[..., None, None] + jnp.mean(phi0s, axis=[-1,-2])[:, None, None]
+  #means = jnp.mean(real_space_signal, axis=[-1, -2])
+  return real_space_signal#-means[..., None, None] + jnp.mean(phi0s, axis=[-1,-2])[:, None, None]
 
 #@partial(jax.jit, static_argnums=[1,2], static_argnames=["speedup", "L"])
 def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0, p0=1):
@@ -299,8 +299,8 @@ def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0, p0=1):
   prefactor = jnp.sqrt(Omega/(2*hatpsquared))
   sample = sample_complex_unit_normal(seed, N, sample_shape)*prefactor
   real_space_signal = our_ifft(sample)
-  means = jnp.mean(real_space_signal, axis=[-1, -2])
-  return real_space_signal-means[..., None, None]
+  #means = jnp.mean(real_space_signal, axis=[-1, -2])
+  return real_space_signal#-means[..., None, None]
 
 
 
