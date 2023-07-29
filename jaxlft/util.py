@@ -276,14 +276,14 @@ def sample_complex_unit_normal(seed, N, sample_shape):
   return 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
 
 #@partial(jax.jit, static_argnums=, static_argnames=["speedup", "L"])
-def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
+def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0, p0=1):
   N = phi0s.shape[-1]
   Omega = 1/L**2 #check from paper
   sample_shape = phi0s.shape[:-2]
   phip0s= our_fft(phi0s)
   samples = sample_complex_unit_normal(seed, N, sample_shape)
   hatpsquared = hatpsquared2d(N, L)
-  hatpsquared=hatpsquared.at[0,0].set(10)
+  hatpsquared=hatpsquared.at[0,0].set(p0)
   prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*speedup))/(2*hatpsquared))
   #print(prefactor)
   real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*speedup)*phip0s)
@@ -291,11 +291,11 @@ def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0):
   return real_space_signal-means[..., None, None] + jnp.mean(phi0s, axis=[-1,-2])[:, None, None]
 
 #@partial(jax.jit, static_argnums=[1,2], static_argnames=["speedup", "L"])
-def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0):
+def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0, p0=1):
   Omega = 1/L**2 #check from paper
   samples = sample_complex_unit_normal(seed, N, sample_shape)
   hatpsquared = hatpsquared2d(N, L)
-  hatpsquared = hatpsquared.at[0,0].set(1)
+  hatpsquared = hatpsquared.at[0,0].set(p0)
   prefactor = jnp.sqrt(Omega/(2*hatpsquared))
   sample = sample_complex_unit_normal(seed, N, sample_shape)*prefactor
   real_space_signal = our_ifft(sample)
@@ -305,7 +305,7 @@ def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0):
 
 
 class CarossoPrior:
-    def __init__(self, N, speedup=1.0, L=1.0): #may want to annotate t_max
+    def __init__(self, N, speedup=1.0, L=1.0, p0=1): #may want to annotate t_max
         """Element-wise independent unit normal distribution.
 
         This class is meant to be compatible with the ones
@@ -323,6 +323,7 @@ class CarossoPrior:
         self.L = L
         self.speedup=speedup
         self.Omega = (1.0/L)**2
+        self.p0=p0
         #self.covariance = self.Omega/2*(1/hatpsquared2d(self.N, self.L))
 
     def sample(self,
@@ -357,7 +358,7 @@ class CarossoPrior:
         #logp = jax.scipy.stats.norm.logpdf(value)
         hatpsquared = hatpsquared2d(self.N, self.L)
         #this is to regularize the log probability
-        hatpsquared  = hatpsquared.at[0,0].set(0.001)
+        hatpsquared  = hatpsquared.at[0,0].set(self.p0)
         phips = our_fft(phis) 
         norms = jax.lax.real(phips*jax.lax.conj(phips))
         rescaled_norms = -(hatpsquared/self.Omega) *  norms
