@@ -350,7 +350,7 @@ class GeneralizedCarossoPrior:
         #hatpsquared = hatpsquared2d(N, L)
         #hatpsquared = hatpsquared.at[0,0].set(p0)
         prefactor = jnp.sqrt(Omega/(2*hatpsquared))
-        sample = sample_complex_unit_normal(seed, N, sample_shape)*prefactor
+        sample = sample_complex_unit_normal(seed, self.N, sample_shape)*prefactor
         real_space_signal = our_ifft(sample)
         return real_space_signal
 
