@@ -244,6 +244,7 @@ def our_ifft(phips):
   #conj and choice of norm deals with signs in fourier trasform convention.
   return jax.lax.real(jnp.fft.fftshift(jnp.fft.ifftn(jax.lax.conj(phips), axes=[-1,-2], norm="forward"), axes=[-1,-2]))
 
+#todo: maybe i shouldnt jit this.
 @partial(jax.jit, static_argnums=[0,1])
 def hatpsquared2d(N, L):
   #if n % 2 != 0:
@@ -301,6 +302,68 @@ def sample_from_prior(seed, sample_shape, N, speedup=1.0, L=1.0, p0=1):
   real_space_signal = our_ifft(sample)
   #means = jnp.mean(real_space_signal, axis=[-1, -2])
   return real_space_signal#-means[..., None, None]
+
+def convert_to_frequency_matrix(nonneg_freqs):
+  #we assume that nonneg_freqs is a matrix of size (N/2+1,N/2+1)
+  #with frequencies (0, ..., N/2) on each row/col. 
+  #do not use in jitted code.
+  N2p1 = nonneg_freqs.shape[0]
+  N=(N2p1-1)*2
+  out = np.zeros((N,N))
+  for i in range(0, N2p1):
+    for j in range(0, N2p1):
+        out[i,j] = nonneg_freqs[i,j]
+        if i >=1:
+            out[-i, j] = nonneg_freqs[i,j]
+        if j >= 1:
+            out[i, -j] = nonneg_freqs[i,j]
+        if i>=1 and j >=1:
+            out[-i, -j] = nonneg_freqs[i,j]
+  return out
+
+class GeneralizedCarossoPrior:
+    def __init__(self, N, hatpsquared, speedup=1.0, Omega=1.0):
+        self.N=N
+        self.Omega=Omega
+        self.speedup=speedup
+        self.hatpsquared=hatpsquared
+
+    def sample_from_p_t(self, seed, phi0s, t):
+        N=self.N
+        Omega = self.Omega #check from paper
+        sample_shape = phi0s.shape[:-2]
+        phip0s= our_fft(phi0s)
+        samples = sample_complex_unit_normal(seed, N, sample_shape)
+        hatpsquared = self.hatpsquared
+        prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*speedup))/(2*hatpsquared))
+        real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*speedup)*phip0s)
+        return real_space_signal
+
+    def sample(self,
+               sample_shape: tuple[int, ...] = (),
+               seed: chex.PRNGKey = None) -> jnp.ndarray:
+        if isinstance(sample_shape, int):
+            sample_shape = (sample_shape,)
+        Omega = self.Omega #check from paper
+        samples = sample_complex_unit_normal(seed, self.N, sample_shape)
+        hatpsquared=self.hatpsquared
+        #hatpsquared = hatpsquared2d(N, L)
+        #hatpsquared = hatpsquared.at[0,0].set(p0)
+        prefactor = jnp.sqrt(Omega/(2*hatpsquared))
+        sample = sample_complex_unit_normal(seed, N, sample_shape)*prefactor
+        real_space_signal = our_ifft(sample)
+        return real_space_signal
+
+    def log_prob(self, phis: jnp.ndarray) -> jnp.ndarray:
+        hatpsquared = self.hatpsquared
+        #this is to regularize the log probability
+        #hatpsquared  = hatpsquared.at[0,0].set(self.p0)
+        phips = our_fft(phis) 
+        norms = jax.lax.real(phips*jax.lax.conj(phips))
+        rescaled_norms = -(hatpsquared/self.Omega) *  norms
+        uncorrected_sums = jnp.sum(rescaled_norms, axis=(-1,-2))/2
+        N2 = int(int(self.N)/2)
+        return uncorrected_sums + (rescaled_norms[:, 0, 0]/2) + (rescaled_norms[:, N2, N2]/2)
 
 
 
