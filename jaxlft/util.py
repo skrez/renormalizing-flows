@@ -274,7 +274,7 @@ def sample_complex_unit_normal(seed, N, sample_shape):
   samples_flipped = samples.copy()
   samples_flipped = samples_flipped.at[..., 1:, :].set(samples_flipped[..., :0:-1, :])
   samples_flipped = samples_flipped.at[..., :, 1:].set(samples_flipped[..., :, :0:-1])
-  almost_final = 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
+  final = 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
   final = final.at[0,0].set(final[0,0]/jnp.sqrt(2))
   final = final.at[N//2, N//2].set(final[N//2, N//2]/jnp.sqrt(2))
   return final
