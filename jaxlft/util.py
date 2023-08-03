@@ -274,7 +274,10 @@ def sample_complex_unit_normal(seed, N, sample_shape):
   samples_flipped = samples.copy()
   samples_flipped = samples_flipped.at[..., 1:, :].set(samples_flipped[..., :0:-1, :])
   samples_flipped = samples_flipped.at[..., :, 1:].set(samples_flipped[..., :, :0:-1])
-  return 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
+  almost_final = 1/jnp.sqrt(2)*(samples + jax.lax.conj(samples_flipped))
+  final = final.at[0,0].set(final[0,0]/jnp.sqrt(2))
+  final = final.at[N//2, N//2].set(final[N//2, N//2]/jnp.sqrt(2))
+  return final
 
 #@partial(jax.jit, static_argnums=, static_argnames=["speedup", "L"])
 def sample_from_p_t(seed, phi0s, t, speedup=1.0, L=1.0, p0=1):
@@ -326,6 +329,10 @@ class GeneralizedCarossoPrior:
         self.N=N
         self.Omega=Omega
         self.speedup=speedup
+        #hatpsquared is a matrix of shape (N, N)
+        #upper left corner is frequencies [0, N/2]. 
+        #hatpsquared[i, j] should be the value of |\hat{p}|^2 at p=(i,j).
+        #here recall that p_0, p_1 take values in [-N/2+1, ..., N/2]
         self.hatpsquared=jnp.array(hatpsquared)
 
     def sample_from_p_t(self, seed, phi0s, t):

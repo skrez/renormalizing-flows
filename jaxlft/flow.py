@@ -16,6 +16,10 @@ def _without_apply_rng(fn):
         return fn(par, None, *args, **kwargs)
     return wrapped
 
+flow_type = namedtuple('Flow',
+                           ['init', 'prior', 'sample', 'forward', 'reverse', 
+                           'forward_to','sample_to', 'reverse_from'])
+
 
 def transform_flow(
         flow_generator, prior, *, apply_jit=False, init_forward_only=True):
@@ -90,8 +94,6 @@ def transform_flow(
             sample_to, static_argnums=(2,),
             static_argnames=('batch_size',))
 
-    flow_type = namedtuple('Flow',
-                           ['init', 'prior', 'sample', 'forward', 'reverse', 'forward_to','sample_to', 'reverse_from'])
     return flow_type(init, sample_log_prob, sample, forward, reverse, forward_to, sample_to, reverse_from)
 
 
