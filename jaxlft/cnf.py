@@ -246,8 +246,11 @@ class NODEFlowBase(AbstractFlow):
                     field, start, 1.0, step_size=1/self.int_steps, start_time=1.0-t_final)
             return phis, logprob
 
+        def vector_field_exposed(state, t):
+            return self.vector_field(state, t)
 
-        return forward, reverse, forward_to, reverse_from, self.vector_field
+
+        return forward, reverse, forward_to, reverse_from, vector_field_exposed
 
         
 
