@@ -247,7 +247,7 @@ class NODEFlowBase(AbstractFlow):
             return phis, logprob
 
 
-        return forward, reverse, forward_to, reverse_from
+        return forward, reverse, forward_to, reverse_from, self.vector_field
 
         
 
