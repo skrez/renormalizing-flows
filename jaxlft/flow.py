@@ -18,7 +18,7 @@ def _without_apply_rng(fn):
 
 flow_type = namedtuple('Flow',
                            ['init', 'prior', 'sample', 'forward', 'reverse', 
-                           'forward_to','sample_to', 'reverse_from'])
+                           'forward_to','sample_to', 'reverse_from', 'vector_field'])
 
 
 def transform_flow(
@@ -52,9 +52,12 @@ def transform_flow(
     def generator():
         flow = flow_generator()
         if isinstance(flow, tuple):
-            forward, reverse, forward_to, reverse_from = flow
+            forward, reverse, forward_to, reverse_from, vector_field = flow
         else:
-            forward, reverse, forward_to, reverse_from = flow.forward, flow.reverse, flow.forward_to, flow.reverse_from
+            forward, reverse, forward_to, reverse_from, vector_field = (
+                flow.forward, flow.reverse, 
+                flow.forward_to, flow.reverse_from, 
+                flow.vector_field)
 
         def sample(batch_size, **kwargs):
             x, logr = sample_log_prob(hk.next_rng_key(), batch_size)
@@ -74,16 +77,18 @@ def transform_flow(
                 x, _ = reverse(x, **kwargs)
             return x
 
-        return init, (sample, forward, reverse, forward_to, sample_to,reverse_from)
+        return init, (sample, forward, reverse, forward_to, sample_to,reverse_from, vector_field)
 
-    init, (sample, forward, reverse, forward_to, sample_to, reverse_from) = hk.multi_transform(generator)
-    forward, reverse, forward_to, reverse_from= map(_without_apply_rng, (forward, reverse, forward_to, reverse_from))
+    init, (sample, forward, reverse, forward_to, sample_to, reverse_from, vector_field) = hk.multi_transform(generator)
+    forward, reverse, forward_to, reverse_from, vector_field= map(_without_apply_rng, 
+        (forward, reverse, forward_to, reverse_from, vector_field))
 
     if apply_jit:
         forward = jax.jit(forward)
         reverse = jax.jit(reverse)
         forward_to = jax.jit(forward_to)
         reverse_from = jax.jit(reverse_from)
+        vector_field = jax.jit(vector_field)
         sample_log_prob = jax.jit(
             sample_log_prob, static_argnums=(1,),
             static_argnames=('batch_size',))
@@ -94,7 +99,7 @@ def transform_flow(
             sample_to, static_argnums=(2,),
             static_argnames=('batch_size',))
 
-    return flow_type(init, sample_log_prob, sample, forward, reverse, forward_to, sample_to, reverse_from)
+    return flow_type(init, sample_log_prob, sample, forward, reverse, forward_to, sample_to, reverse_from, vector_field)
 
 
 class AbstractFlow:
