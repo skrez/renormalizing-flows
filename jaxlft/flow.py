@@ -79,9 +79,10 @@ def transform_flow(
 
         return init, (sample, forward, reverse, forward_to, sample_to,reverse_from, vector_field)
 
-    init, (sample, forward, reverse, forward_to, sample_to, reverse_from, vector_field) = hk.multi_transform(generator)
-    forward, reverse, forward_to, reverse_from, vector_field= map(_without_apply_rng, 
-        (forward, reverse, forward_to, reverse_from, vector_field))
+    init, (sample, forward, reverse, forward_to, 
+        sample_to, reverse_from, vector_field) = hk.multi_transform(generator)
+    forward, reverse, forward_to, reverse_from= map(_without_apply_rng, 
+        (forward, reverse, forward_to, reverse_from))
 
     if apply_jit:
         forward = jax.jit(forward)
