@@ -350,7 +350,7 @@ class GeneralizedCarossoPrior:
         #note the factor of two difference from `prefactor' above, 
         #this is because this is for the log probability
         #also no square root!
-        logprob_prefactor = (hatpsquared)/(Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup)))
+        logprob_prefactor = (hatpsquared)/(Omega*((-1)*jnp.expm1(-2*hatpsquared*t*self.speedup)))
 
         return (-1)*jnp.sum(norms*logprob_prefactor, axis=(-1,-2))
 
@@ -386,7 +386,7 @@ class GeneralizedCarossoPrior:
         phip0s= our_fft(phi0s)
         samples = sample_complex_unit_normal(seed, N, sample_shape)
         hatpsquared = self.hatpsquared
-        prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup))/(2*hatpsquared))
+        prefactor = jnp.sqrt(Omega*((-1)*jnp.expm1(-2*hatpsquared*t*self.speedup))/(2*hatpsquared))
         noise = (prefactor*samples)
         real_space_signal = our_ifft(noise + jnp.exp(-hatpsquared*t*self.speedup)*phip0s)
         return real_space_signal
