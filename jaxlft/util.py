@@ -335,16 +335,6 @@ class GeneralizedCarossoPrior:
         #here recall that p_0, p_1 take values in [-N/2+1, ..., N/2]
         self.hatpsquared=jnp.array(hatpsquared)
 
-    def sample_from_p_t(self, seed, phi0s, t):
-        N=self.N
-        Omega = self.Omega #check from paper
-        sample_shape = phi0s.shape[:-2]
-        phip0s= our_fft(phi0s)
-        samples = sample_complex_unit_normal(seed, N, sample_shape)
-        hatpsquared = self.hatpsquared
-        prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup))/(2*hatpsquared))
-        real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*self.speedup)*phip0s)
-        return real_space_signal
 
     def conditional_log_prob(self, phits, phi0s, t):
         N = self.N
@@ -360,9 +350,18 @@ class GeneralizedCarossoPrior:
         #note the factor of two difference from `prefactor' above, 
         #this is because this is for the log probability
         #also no square root!
-        logprob_prefactor = Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup))/(hatpsquared)
+        logprob_prefactor = (hatpsquared)/(Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup)))
 
-        return (-1)*jnp.sum(norms/logprob_prefactor, axis=(-1,-2))
+        return (-1)*jnp.sum(norms*logprob_prefactor, axis=(-1,-2))
+
+    def log_prob(self, phis: jnp.ndarray) -> jnp.ndarray:
+        hatpsquared = self.hatpsquared
+        #this is to regularize the log probability
+        #hatpsquared  = hatpsquared.at[0,0].set(self.p0)
+        phips = our_fft(phis) 
+        norms = jax.lax.real(phips*jax.lax.conj(phips))
+        rescaled_norms = (hatpsquared/self.Omega) *  norms
+        return (-1)*jnp.sum(rescaled_norms, axis=(-1, -2))
 
 
     def sample(self,
@@ -380,14 +379,19 @@ class GeneralizedCarossoPrior:
         real_space_signal = our_ifft(sample)
         return real_space_signal
 
-    def log_prob(self, phis: jnp.ndarray) -> jnp.ndarray:
+    def sample_from_p_t(self, seed, phi0s, t):
+        N=self.N
+        Omega = self.Omega #check from paper
+        sample_shape = phi0s.shape[:-2]
+        phip0s= our_fft(phi0s)
+        samples = sample_complex_unit_normal(seed, N, sample_shape)
         hatpsquared = self.hatpsquared
-        #this is to regularize the log probability
-        #hatpsquared  = hatpsquared.at[0,0].set(self.p0)
-        phips = our_fft(phis) 
-        norms = jax.lax.real(phips*jax.lax.conj(phips))
-        rescaled_norms = (hatpsquared/self.Omega) *  norms
-        return (-1)*jnp.sum(rescaled_norms, axis=(-1, -2))
+        prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup))/(2*hatpsquared))
+        noise = (prefactor*samples)
+        real_space_signal = our_ifft(noise + jnp.exp(-hatpsquared*t*self.speedup)*phip0s)
+        return real_space_signal
+
+
 
 
 
