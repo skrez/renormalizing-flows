@@ -346,7 +346,7 @@ class GeneralizedCarossoPrior:
         real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*self.speedup)*phip0s)
         return real_space_signal
 
-    def conditiona_log_prob(self, phits, phi0s, t):
+    def conditional_log_prob(self, phits, phi0s, t):
         N = self.N
         Omega = self.Omega
         hatpsquared = self.hatpsquared
