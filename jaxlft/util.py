@@ -338,13 +338,31 @@ class GeneralizedCarossoPrior:
     def sample_from_p_t(self, seed, phi0s, t):
         N=self.N
         Omega = self.Omega #check from paper
-        sample_shape = phi0s.shape[:-2]
+        #sample_shape = phi0s.shape[:-2]
         phip0s= our_fft(phi0s)
         samples = sample_complex_unit_normal(seed, N, sample_shape)
         hatpsquared = self.hatpsquared
         prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup))/(2*hatpsquared))
         real_space_signal = our_ifft((prefactor*samples) + jnp.exp(-hatpsquared*t*self.speedup)*phip0s)
         return real_space_signal
+
+    def conditiona_log_prob(self, phits, phi0s, t):
+        N = self.N
+        Omega = self.Omega
+        hatpsquared = self.hatpsquared
+        speedup=self.speedup
+
+        phip0s= our_fft(phi0s)
+        phipts = our_fft(phipts)
+        diff_pspace = phipts - jnp.exp(-hatpsquared*t*self.speedup)*phip0s
+
+        norms = jax.lax.real(diff_pspace*jax.lax.conj(diff_pspace))
+        #note the factor of two difference from `prefactor' above, 
+        #this is because this is for the log probability
+        logprob_prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup))/(hatpsquared))
+
+        return (-1)*jnp.sum(prefactor*norms, axis=(-1,-2))
+
 
     def sample(self,
                sample_shape: tuple[int, ...] = (),
