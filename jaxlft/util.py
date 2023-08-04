@@ -361,7 +361,7 @@ class GeneralizedCarossoPrior:
         #this is because this is for the log probability
         logprob_prefactor = jnp.sqrt(Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup))/(hatpsquared))
 
-        return (-1)*jnp.sum(prefactor*norms, axis=(-1,-2))
+        return (-1)*jnp.sum(logprob_prefactor*norms, axis=(-1,-2))
 
 
     def sample(self,
