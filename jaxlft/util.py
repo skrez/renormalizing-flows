@@ -362,7 +362,7 @@ class GeneralizedCarossoPrior:
         #also no square root!
         logprob_prefactor = Omega*(1-jnp.exp(-2*hatpsquared*t*self.speedup))/(hatpsquared)
 
-        return (-1)*jnp.sum(logprob_prefactor*norms, axis=(-1,-2))
+        return (-1)*jnp.sum(norms/logprob_prefactor, axis=(-1,-2))
 
 
     def sample(self,
