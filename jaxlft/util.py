@@ -353,7 +353,7 @@ class GeneralizedCarossoPrior:
         speedup=self.speedup
 
         phip0s= our_fft(phi0s)
-        phipts = our_fft(phipts)
+        phipts = our_fft(phits)
         diff_pspace = phipts - jnp.exp(-hatpsquared*t*self.speedup)*phip0s
 
         norms = jax.lax.real(diff_pspace*jax.lax.conj(diff_pspace))
