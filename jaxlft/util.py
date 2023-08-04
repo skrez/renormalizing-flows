@@ -338,7 +338,7 @@ class GeneralizedCarossoPrior:
     def sample_from_p_t(self, seed, phi0s, t):
         N=self.N
         Omega = self.Omega #check from paper
-        #sample_shape = phi0s.shape[:-2]
+        sample_shape = phi0s.shape[:-2]
         phip0s= our_fft(phi0s)
         samples = sample_complex_unit_normal(seed, N, sample_shape)
         hatpsquared = self.hatpsquared
