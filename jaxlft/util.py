@@ -354,7 +354,7 @@ class PolchinskiPrior:
         logK_t = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+speedup*t*(Lambda0**2))
         logK_0 = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+0*(Lambda0**2))
         K_t_div_K_0 = jnp.exp(logK_t-logK_0)
-        denom = K_t_div_K_0 * (jnp.exp(logK_t) - jnp.exp(logK_0))
+        denom = K_t_div_K_0 * (jnp.exp(logK_0) - jnp.exp(logK_t))
         #compute K0
 
 
@@ -421,7 +421,7 @@ class PolchinskiPrior:
         logK_t = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+speedup*t*(Lambda0**2))
         logK_0 = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+0*(Lambda0**2))
         K_t_div_K_0 = jnp.exp(logK_t-logK_0)
-        denom = K_t_div_K_0 * (jnp.exp(logK_t) - jnp.exp(logK_0))
+        denom = K_t_div_K_0 * (jnp.exp(logK_0) - jnp.exp(logK_t))
 
         phip0s= our_fft(phi0s)
         samples = sample_complex_unit_normal(seed, N, sample_shape)
