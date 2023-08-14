@@ -375,6 +375,8 @@ class PolchinskiPrior:
         new_hatpsquared = hatpsquared + self.zero_m2
         L = self.L
         Lambda0 = self.Lambda0
+        speedup=self.speedup
+
         #this is to regularize the log probability
         #hatpsquared  = hatpsquared.at[0,0].set(self.p0)
         phips = our_fft(phis) 
@@ -398,6 +400,7 @@ class PolchinskiPrior:
         samples = sample_complex_unit_normal(seed, self.N, sample_shape)
         hatpsquared=self.hatpsquared
         new_hatpsquared = hatpsquared + self.zero_m2
+        speedup=self.speedup
 
         K_1 = jnp.exp((-1)*(new_hatpsquared/(Lambda0**2)) * (1+speedup*1*(Lambda0**2)))
         prefactor = jnp.sqrt(K_1/( (self.L **2) * (hatpsquared + self.m2) ) )
