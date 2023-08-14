@@ -394,6 +394,7 @@ class PolchinskiPrior:
                seed: chex.PRNGKey = None) -> jnp.ndarray:
         if isinstance(sample_shape, int):
             sample_shape = (sample_shape,)
+        Lambda0=self.Lambda0
         samples = sample_complex_unit_normal(seed, self.N, sample_shape)
         hatpsquared=self.hatpsquared
         new_hatpsquared = hatpsquared + self.zero_m2
