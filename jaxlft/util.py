@@ -328,7 +328,6 @@ def convert_to_frequency_matrix(nonneg_freqs):
 class PolchinskiPrior:
     def __init__(self, N, hatpsquared, m2, zero_m2, speedup=1.0, L=1.0, Lambda0=None):
         self.N=N
-        self.Omega=Omega
         self.speedup=speedup
         self.m2 = m2
         self.zero_m2 = zero_m2
