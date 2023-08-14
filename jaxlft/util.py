@@ -324,6 +324,112 @@ def convert_to_frequency_matrix(nonneg_freqs):
             out[-i, -j] = nonneg_freqs[i,j]
   return out
 
+
+class PolchinskiPrior:
+    def __init__(self, N, hatpsquared, m2, zero_m2, speedup=1.0, L=1.0, Lambda0=None):
+        self.N=N
+        self.Omega=Omega
+        self.speedup=speedup
+        self.m2 = m2
+        self.zero_m2 = zero_m2
+        self.L =L 
+        if Lambda0 == None:
+            self.Lambda0 = 2*np.sqrt(2)*self.N/self.L
+        else:
+            self.Lambda0 = Lambda0
+        #hatpsquared is a matrix of shape (N, N)
+        #upper left corner is frequencies [0, N/2]. 
+        #hatpsquared[i, j] should be the value of |\hat{p}|^2 at p=(i,j).
+        #here recall that p_0, p_1 take values in [-N/2+1, ..., N/2]
+        self.hatpsquared=jnp.array(hatpsquared)
+
+
+    def conditional_log_prob(self, phits, phi0s, t):
+        N = self.N
+        L=self.L
+        hatpsquared = self.hatpsquared
+        speedup=self.speedup    
+        m2 = self.m2
+        Lambda0 = self.Lambda0
+        new_hatpsquared = hatpsquared + self.zero_m2
+        logK_t = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+speedup*t*(Lambda0**2))
+        logK_0 = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+0*(Lambda0**2))
+        K_t_div_K_0 = jnp.exp(logK_t-logK_0)
+        denom = K_t_div_K_0 * (jnp.exp(logK_t) - jnp.exp(logK_0))
+        #compute K0
+
+
+        phip0s= our_fft(phi0s)
+        phipts = our_fft(phits)
+        diff_pspace = phipts - K_t_div_K_0*phip0s
+
+        norms = jax.lax.real(diff_pspace*jax.lax.conj(diff_pspace))
+        #note the factor of two difference from `prefactor' above, 
+        #this is because this is for the log probability
+        #also no square root!
+        logprob_prefactor = (L**2/2) * (hatpsquared+self.m2)/denom
+
+        return (-1)*jnp.sum(norms*logprob_prefactor, axis=(-1,-2))
+
+    def log_prob(self, phis: jnp.ndarray) -> jnp.ndarray:
+        hatpsquared = self.hatpsquared
+        new_hatpsquared = hatpsquared + self.zero_m2
+        L = self.L
+        Lambda0 = self.Lambda0
+        #this is to regularize the log probability
+        #hatpsquared  = hatpsquared.at[0,0].set(self.p0)
+        phips = our_fft(phis) 
+        norms = jax.lax.real(phips*jax.lax.conj(phips))
+        rescaled_norms = (L**2/2)*(hatpsquared+self.m2) *  norms
+        #note the lack of minus sign.
+        #we evaluate 1/K_1 (pointwise).
+        #we use K_1 since the polchinski flow should tend to the flow of
+        #the corresponding free field theory -- which doesnt stop flowing. 
+        #set speedup high enough so that at t=1 we have converged to this theory.
+        K_1_inv = jnp.exp((new_hatpsquared/(Lambda0**2)) * (1+speedup*1*(Lambda0**2)))
+        return (-1)*jnp.sum(K_1_inv*rescaled_norms, axis=(-1, -2))
+
+
+    def sample(self,
+               sample_shape: tuple[int, ...] = (),
+               seed: chex.PRNGKey = None) -> jnp.ndarray:
+        if isinstance(sample_shape, int):
+            sample_shape = (sample_shape,)
+        samples = sample_complex_unit_normal(seed, self.N, sample_shape)
+        hatpsquared=self.hatpsquared
+        new_hatpsquared = hatpsquared + self.zero_m2
+
+        K_1 = jnp.exp((-1)*(new_hatpsquared/(Lambda0**2)) * (1+speedup*1*(Lambda0**2)))
+        prefactor = jnp.sqrt(K_1/( (self.L **2) * (hatpsquared + self.m2) ) )
+        sample = sample_complex_unit_normal(seed, self.N, sample_shape)*prefactor
+        real_space_signal = our_ifft(sample)
+        return real_space_signal
+
+    def sample_from_p_t(self, seed, phi0s, t):
+        sample_shape = phi0s.shape[:-2]
+
+        N = self.N
+        L=self.L
+        hatpsquared = self.hatpsquared
+        speedup=self.speedup    
+        m2 = self.m2
+        Lambda0 = self.Lambda0
+        new_hatpsquared = hatpsquared + self.zero_m2
+        logK_t = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+speedup*t*(Lambda0**2))
+        logK_0 = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+0*(Lambda0**2))
+        K_t_div_K_0 = jnp.exp(logK_t-logK_0)
+        denom = K_t_div_K_0 * (jnp.exp(logK_t) - jnp.exp(logK_0))
+
+        phip0s= our_fft(phi0s)
+        samples = sample_complex_unit_normal(seed, N, sample_shape)
+
+
+        prefactor = 1/jnp.sqrt((L**2) * (hatpsquared+self.m2)/denom)
+        noise = (prefactor*samples)
+        real_space_signal = our_ifft(noise + K_t_div_K_0*phip0s)
+        return real_space_signal
+
+
 class GeneralizedCarossoPrior:
     def __init__(self, N, hatpsquared, speedup=1.0, Omega=1.0):
         self.N=N
