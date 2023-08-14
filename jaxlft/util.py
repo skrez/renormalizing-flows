@@ -427,7 +427,7 @@ class PolchinskiPrior:
         samples = sample_complex_unit_normal(seed, N, sample_shape)
 
 
-        prefactor = 1/jnp.sqrt((L**2) * (hatpsquared+self.m2)/denom)
+        prefactor = jnp.sqrt(denom)/jnp.sqrt((L**2) * (hatpsquared+self.m2))
         noise = (prefactor*samples)
         real_space_signal = our_ifft(noise + K_t_div_K_0*phip0s)
         return real_space_signal
