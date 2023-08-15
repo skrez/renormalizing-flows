@@ -333,7 +333,7 @@ class PolchinskiPrior:
         self.zero_m2 = zero_m2
         self.L =L 
         if Lambda0 == None:
-            self.Lambda0 = 2*np.sqrt(2)*self.N/self.L
+            self.Lambda0 = 2*jnp.sqrt(2)*self.N/self.L
         else:
             self.Lambda0 = Lambda0
         #hatpsquared is a matrix of shape (N, N)
@@ -344,6 +344,9 @@ class PolchinskiPrior:
 
 
     def conditional_log_prob(self, phits, phi0s, t):
+        #BUG
+        #This will not have correct behavior at t=0 no matter what!
+        #should discuss w jordan but this as no obvious remedy.
         N = self.N
         L=self.L
         hatpsquared = self.hatpsquared
@@ -354,6 +357,7 @@ class PolchinskiPrior:
         logK_t = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+speedup*t*(Lambda0**2))
         logK_0 = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+0*(Lambda0**2))
         K_t_div_K_0 = jnp.exp(logK_t-logK_0)
+        #K0 -       
         denom = K_t_div_K_0 * (jnp.exp(logK_0) - jnp.exp(logK_t))
         #compute K0
 
@@ -409,28 +413,35 @@ class PolchinskiPrior:
         return real_space_signal
 
     def sample_from_p_t(self, seed, phi0s, t):
-        sample_shape = phi0s.shape[:-2]
+        def sample_from_p_t_nonzero(self, seed, phi0s, t):
+                sample_shape = phi0s.shape[:-2]
 
-        N = self.N
-        L=self.L
-        hatpsquared = self.hatpsquared
-        speedup=self.speedup    
-        m2 = self.m2
-        Lambda0 = self.Lambda0
-        new_hatpsquared = hatpsquared + self.zero_m2
-        logK_t = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+speedup*t*(Lambda0**2))
-        logK_0 = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+0*(Lambda0**2))
-        K_t_div_K_0 = jnp.exp(logK_t-logK_0)
-        denom = K_t_div_K_0 * (jnp.exp(logK_0) - jnp.exp(logK_t))
+                N = self.N
+                L=self.L
+                hatpsquared = self.hatpsquared
+                speedup=self.speedup    
+                m2 = self.m2
+                Lambda0 = self.Lambda0
+                new_hatpsquared = hatpsquared + self.zero_m2
+                logK_t = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+speedup*t*(Lambda0**2))
+                logK_0 = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+0*(Lambda0**2))
+                K_t_div_K_0 = jnp.exp(logK_t-logK_0)
+                denom = K_t_div_K_0 * (jnp.exp(logK_0) - jnp.exp(logK_t))
 
-        phip0s= our_fft(phi0s)
-        samples = sample_complex_unit_normal(seed, N, sample_shape)
+                phip0s= our_fft(phi0s)
+                samples = sample_complex_unit_normal(seed, N, sample_shape)
 
 
-        prefactor = jnp.sqrt(denom)/jnp.sqrt((L**2) * (hatpsquared+self.m2))
-        noise = (prefactor*samples)
-        real_space_signal = our_ifft(noise + K_t_div_K_0*phip0s)
+                prefactor = jnp.sqrt(denom)/jnp.sqrt((L**2) * (hatpsquared+self.m2))
+                noise = (prefactor*samples)
+                real_space_signal = our_ifft(noise + K_t_div_K_0*phip0s)
         return real_space_signal
+        def do_nothing(self, seed, phi0s, t):
+            return phi0s
+        return jax.lax.cond(t==0, 
+            do_nothing, 
+            sample_from_p_t_nonzero,
+            self, seed, phi0s, t)
 
 
 class GeneralizedCarossoPrior:
