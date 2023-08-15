@@ -413,7 +413,7 @@ class PolchinskiPrior:
         return real_space_signal
 
     def sample_from_p_t(self, seed, phi0s, t):
-        def sample_from_p_t_nonzero(self, seed, phi0s, t):
+        def sample_from_p_t_nonzero(seed, phi0s, t):
                 sample_shape = phi0s.shape[:-2]
 
                 N = self.N
@@ -436,12 +436,12 @@ class PolchinskiPrior:
                 noise = (prefactor*samples)
                 real_space_signal = our_ifft(noise + K_t_div_K_0*phip0s)
                 return real_space_signal
-        def do_nothing(self, seed, phi0s, t):
+        def do_nothing(seed, phi0s, t):
             return phi0s
         return jax.lax.cond(t==0, 
             do_nothing, 
             sample_from_p_t_nonzero,
-            self, seed, phi0s, t)
+            seed, phi0s, t)
 
 
 class GeneralizedCarossoPrior:
