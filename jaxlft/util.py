@@ -354,8 +354,8 @@ class PolchinskiPrior:
         m2 = self.m2
         Lambda0 = self.Lambda0
         new_hatpsquared = hatpsquared + self.zero_m2
-        logK_t = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+speedup*t*(Lambda0**2))
-        logK_0 = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+0*(Lambda0**2))
+        logK_t = ((-1)*new_hatpsquared*t*speedup)
+        logK_0 = ((-1)*new_hatpsquared*0*speedup)
         K_t_div_K_0 = jnp.exp(logK_t-logK_0)
         #K0 -       
         denom = K_t_div_K_0 * (jnp.exp(logK_0) - jnp.exp(logK_t))
@@ -391,7 +391,7 @@ class PolchinskiPrior:
         #we use K_1 since the polchinski flow should tend to the flow of
         #the corresponding free field theory -- which doesnt stop flowing. 
         #set speedup high enough so that at t=1 we have converged to this theory.
-        K_1_inv = jnp.exp((new_hatpsquared/(Lambda0**2)) * (1+speedup*1*(Lambda0**2)))
+        K_1_inv = jnp.exp(new_hatpsquared*1*speedup)
         return (-1)*jnp.sum(K_1_inv*rescaled_norms, axis=(-1, -2))
 
 
@@ -406,7 +406,7 @@ class PolchinskiPrior:
         new_hatpsquared = hatpsquared + self.zero_m2
         speedup=self.speedup
 
-        K_1 = jnp.exp((-1)*(new_hatpsquared/(Lambda0**2)) * (1+speedup*1*(Lambda0**2)))
+        K_1 = jnp.exp((-1)*new_hatpsquared*1*speedup)
         prefactor = jnp.sqrt(K_1/( (self.L **2) * (hatpsquared + self.m2) ) )
         sample = sample_complex_unit_normal(seed, self.N, sample_shape)*prefactor
         real_space_signal = our_ifft(sample)
@@ -423,8 +423,8 @@ class PolchinskiPrior:
                 m2 = self.m2
                 Lambda0 = self.Lambda0
                 new_hatpsquared = hatpsquared + self.zero_m2
-                logK_t = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+speedup*t*(Lambda0**2))
-                logK_0 = ((-1)*new_hatpsquared/(Lambda0**2)) * (1+0*(Lambda0**2))
+                logK_t = ((-1)*new_hatpsquared*t*speedup)
+                logK_0 = ((-1)*new_hatpsquared*t*speedup)
                 K_t_div_K_0 = jnp.exp(logK_t-logK_0)
                 denom = K_t_div_K_0 * (jnp.exp(logK_0) - jnp.exp(logK_t))
 
