@@ -424,7 +424,7 @@ class PolchinskiPrior:
                 Lambda0 = self.Lambda0
                 new_hatpsquared = hatpsquared + self.zero_m2
                 logK_t = ((-1)*new_hatpsquared*t*speedup)
-                logK_0 = ((-1)*new_hatpsquared*t*speedup)
+                logK_0 = ((-1)*new_hatpsquared*0*speedup)
                 K_t_div_K_0 = jnp.exp(logK_t-logK_0)
                 denom = K_t_div_K_0 * (jnp.exp(logK_0) - jnp.exp(logK_t))
 
